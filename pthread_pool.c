@@ -77,7 +77,8 @@ void *thread_worker(void *arg)
         semvalue = 0; 
         sem_getvalue(&g_task->sem_dispath, &semvalue); // 获得信号量当前的值
 
-        tmp->idle = 1;
+        /* 线程工作状态由调度线程置1，不应该由线程自己置位。
+           防止工作线程置位的之前被抢占tmp->idle = 1;*/
         DBG_PRINT(DBG, "set idle == 0: %d    semvalue=%d\n", tmp->idle, semvalue);
         tmp->idle = 0;
         sleep(1);
@@ -185,6 +186,8 @@ void *dispath_thread(void *arg)
             if (g_task->pthread_detail[i].idle == 0) {
                 /* 工作线程的参数 */
                 g_task->pthread_detail[i].arg = NULL;
+                /* 线程无锁，在调度的时候修改工作线程的状态 */
+                g_task->pthread_detail[i].idle = 1;
 
                 /* 通知工作线程 */
                 sem_post(&g_task->sem_thread[i]);
